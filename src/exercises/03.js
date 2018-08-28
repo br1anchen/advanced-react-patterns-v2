@@ -16,10 +16,6 @@ import {Switch} from '../switch'
 //   Note: The `defaultValue` can be an object, function, or anything.
 //   It's simply what React will use if the ThemeContext.Consumer is rendered
 //   outside a ThemeContext.Provider
-//   In our situation, it wouldn't make sense to render a Consumer outside a
-//   Provider, so you don't have to specify a defaultValue. One of the extra
-//   credit items shows how to throw a helpful error message if someone attempts
-//   to render a Consumer without a Provider.
 //
 // ...
 // <ThemeContext.Provider value={this.state}>
@@ -44,15 +40,28 @@ import {Switch} from '../switch'
 //   (newlines are ok, like in the above example)
 
 // 🐨 create a ToggleContext with React.createContext here
+const ToggleContext = React.createContext()
 
 class Toggle extends React.Component {
   // 🐨 each of these compound components will need to be changed to use
   // ToggleContext.Consumer and rather than getting `on` and `toggle`
   // from props, it'll get it from the ToggleContext.Consumer value.
-  static On = ({on, children}) => (on ? children : null)
-  static Off = ({on, children}) => (on ? null : children)
-  static Button = ({on, toggle, ...props}) => (
-    <Switch on={on} onClick={toggle} {...props} />
+  static On = ({children}) => (
+    <ToggleContext.Consumer>
+      {({on}) => (on ? children : null)}
+    </ToggleContext.Consumer>
+  )
+  static Off = ({children}) => (
+    <ToggleContext.Consumer>
+      {({on}) => (on ? null : children)}
+    </ToggleContext.Consumer>
+  )
+  static Button = props => (
+    <ToggleContext.Consumer>
+      {({on, toggle}) => (
+        <Switch on={on} onClick={toggle} {...props} />
+      )}
+    </ToggleContext.Consumer>
   )
   state = {on: false}
   toggle = () =>
@@ -67,11 +76,15 @@ class Toggle extends React.Component {
     // expose the `on` state and `toggle` method as properties in the context
     // value (the value prop).
 
-    return React.Children.map(this.props.children, child =>
-      React.cloneElement(child, {
-        on: this.state.on,
-        toggle: this.toggle,
-      }),
+    return (
+      <ToggleContext.Provider
+        value={{
+          on: this.state.on,
+          toggle: this.toggle,
+        }}
+      >
+        {this.props.children}
+      </ToggleContext.Provider>
     )
   }
 }
