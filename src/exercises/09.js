@@ -10,7 +10,11 @@ class Toggle extends React.Component {
   static defaultProps = {
     initialOn: false,
     onReset: () => {},
-    stateReducer: (state, changes) => changes,
+    stateReducer: (_state, changes) => changes,
+  }
+  static stateChangeTypes = {
+    reset: '__reset__',
+    toggle: '__toggle__',
   }
   initialState = {on: this.props.initialOn}
   state = this.initialState
@@ -26,27 +30,31 @@ class Toggle extends React.Component {
       // property and return an object only if the state changes
       // 💰 to remove the `type`, you can destructure the changes:
       // `{type, ...c}`
-      return Object.keys(reducedChanges).length
+      const {type: _ignore, ...onlyChanges} = Object.keys(
+        reducedChanges,
+      ).length
         ? reducedChanges
         : null
+      return onlyChanges
     }, callback)
   }
   reset = () =>
     // 🐨 add a `type` string property to this call
-    this.internalSetState(this.initialState, () =>
-      this.props.onReset(this.state.on),
+    this.internalSetState(
+      {...this.initialState, type: Toggle.stateChangeTypes.reset},
+      () => this.props.onReset(this.state.on),
     )
   // 🐨 accept a `type` property here and give it a default value
-  toggle = () =>
+  toggle = ({type = Toggle.stateChangeTypes.toggle} = {}) =>
     this.internalSetState(
       // pass the `type` string to this object
-      ({on}) => ({on: !on}),
+      ({on}) => ({on: !on, type}),
       () => this.props.onToggle(this.state.on),
     )
   getTogglerProps = ({onClick, ...props} = {}) => ({
     // 🐨 change `this.toggle` to `() => this.toggle()`
     // to avoid passing the click event to this.toggle.
-    onClick: callAll(onClick, this.toggle),
+    onClick: callAll(onClick, () => this.toggle()),
     'aria-pressed': this.state.on,
     ...props,
   })
@@ -87,8 +95,11 @@ class Usage extends React.Component {
     if (changes.type === 'forced') {
       return changes
     }
+    if (changes.type === Toggle.stateChangeTypes.reset) {
+      return changes
+    }
     if (this.state.timesClicked >= 4) {
-      return {...changes, on: false}
+      return {...changes, on: state.on}
     }
     return changes
   }
