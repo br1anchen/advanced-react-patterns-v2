@@ -56,10 +56,12 @@ class Toggle extends React.Component {
           }
           return newChanges
         }, {})
-        return {...state, nonControlledChanges}
+        return Object.keys(nonControlledChanges).length
+          ? nonControlledChanges
+          : null
       },
       () => {
-        this.props.onStateChange(allChanges)
+        this.props.onStateChange(allChanges, this.getState())
         callback && callback()
       },
     )
