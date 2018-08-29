@@ -8,6 +8,9 @@ import {Switch} from '../switch'
 // Next you'll put the pieces together.
 
 class Toggle extends React.Component {
+  static defaultProps = {
+    onStateChange: () => {},
+  }
   state = {on: false}
   // 🐨 let's add a function that can determine whether
   // the on prop is controlled. Call it `isControlled`.
@@ -22,25 +25,50 @@ class Toggle extends React.Component {
   isControlled(prop) {
     return this.props[prop] !== undefined
   }
-  getState() {
-    return {
-      on: this.isControlled('on') ? this.props.on : this.state.on,
-    }
+  getState(state = this.state) {
+    return Object.entries(state).reduce(
+      (combinedState, [key, value]) => {
+        if (this.isControlled(key)) {
+          combinedState[key] = this.props[key]
+        } else {
+          combinedState[key] = value
+        }
+        return combinedState
+      },
+      {},
+    )
+  }
+  internalStateState(changes, callback) {
+    let allChanges
+    this.setState(
+      state => {
+        const combinedState = this.getState(state)
+        const changesObject =
+          typeof changes === 'function'
+            ? changes(combinedState)
+            : changes
+        allChanges = changesObject
+        const nonControlledChanges = Object.entries(
+          changesObject,
+        ).reduce((newChanges, [key, value]) => {
+          if (!this.isControlled(key)) {
+            newChanges[key] = value
+          }
+          return newChanges
+        }, {})
+        return {...state, nonControlledChanges}
+      },
+      () => {
+        this.props.onStateChange(allChanges)
+        callback && callback()
+      },
+    )
   }
   toggle = () => {
     // 🐨 if the toggle is controlled, then we shouldn't
     // be updating state. Instead we should just call
     // `this.props.onToggle` with what the state should be
-    if (this.isControlled('on')) {
-      this.props.onToggle(!this.getState().on)
-    } else {
-      this.setState(
-        ({on}) => ({on: !on}),
-        () => {
-          this.props.onToggle(this.getState().on)
-        },
-      )
-    }
+    this.internalStateState(({on}) => ({on: !on}))
   }
   render() {
     // 🐨 rather than getting state from this.state,
@@ -64,7 +92,7 @@ class Toggle extends React.Component {
 // You can make all the tests pass by updating the Toggle component.
 class Usage extends React.Component {
   state = {bothOn: false}
-  handleToggle = on => {
+  handleStateChange = ({on}) => {
     this.setState({bothOn: on})
   }
   render() {
@@ -74,12 +102,12 @@ class Usage extends React.Component {
       <div>
         <Toggle
           on={bothOn}
-          onToggle={this.handleToggle}
+          onStateChange={this.handleStateChange}
           ref={toggle1Ref}
         />
         <Toggle
           on={bothOn}
-          onToggle={this.handleToggle}
+          onStateChange={this.handleStateChange}
           ref={toggle2Ref}
         />
       </div>
