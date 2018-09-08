@@ -11,6 +11,11 @@ class Toggle extends React.Component {
   static defaultProps = {
     onStateChange: () => {},
   }
+  static stateChangeType = {
+    toggleOn: '__toggle_on__',
+    toggleOff: '__toggle_off__',
+    toggle: '__toggle__',
+  }
   state = {on: false}
   // 🐨 let's add a function that can determine whether
   // the on prop is controlled. Call it `isControlled`.
@@ -38,7 +43,7 @@ class Toggle extends React.Component {
       {},
     )
   }
-  internalStateState(changes, callback) {
+  internalSetState(changes, callback) {
     let allChanges
     this.setState(
       state => {
@@ -48,8 +53,9 @@ class Toggle extends React.Component {
             ? changes(combinedState)
             : changes
         allChanges = changesObject
+        const {type: _, ...onlyChanges} = changesObject
         const nonControlledChanges = Object.entries(
-          changesObject,
+          onlyChanges,
         ).reduce((newChanges, [key, value]) => {
           if (!this.isControlled(key)) {
             newChanges[key] = value
@@ -66,17 +72,32 @@ class Toggle extends React.Component {
       },
     )
   }
-  toggle = () => {
+  toggle = ({on: newState, type} = {}) => {
     // 🐨 if the toggle is controlled, then we shouldn't
     // be updating state. Instead we should just call
     // `this.props.onToggle` with what the state should be
-    this.internalStateState(({on}) => ({on: !on}))
+    this.internalSetState(({on}) => ({
+      on: typeof newState === 'boolean' ? newState : !on,
+      type,
+    }))
   }
+  handleSwitchClick = () =>
+    this.toggle({type: Toggle.stateChangeType.toggle})
+  handleOffClick = () =>
+    this.toggle({on: false, type: Toggle.stateChangeType.toggleOff})
+  handleOnClick = () =>
+    this.toggle({on: true, type: Toggle.stateChangeType.toggleOn})
   render() {
     // 🐨 rather than getting state from this.state,
     // let's use our `getState` method.
     const {on} = this.getState()
-    return <Switch on={on} onClick={this.toggle} />
+    return (
+      <>
+        <Switch on={on} onClick={this.handleSwitchClick} />
+        <button onClick={this.handleOffClick}>off</button>
+        <button onClick={this.handleOnClick}>on</button>
+      </>
+    )
   }
 }
 
@@ -94,8 +115,20 @@ class Toggle extends React.Component {
 // You can make all the tests pass by updating the Toggle component.
 class Usage extends React.Component {
   state = {bothOn: false}
-  handleStateChange = ({on}) => {
-    this.setState({bothOn: on})
+  lastWasButton = false
+  handleStateChange = ({on, type}) => {
+    const isButtonChange =
+      type === Toggle.stateChangeType.toggleOn ||
+      Toggle.stateChangeType.toggleOff
+    if (
+      (this.lastWasButton && isButtonChange) ||
+      type === Toggle.stateChangeType.toggle
+    ) {
+      this.setState({bothOn: on})
+      this.lastWasButton = false
+    } else {
+      this.lastWasButton = isButtonChange
+    }
   }
   render() {
     const {bothOn} = this.state
